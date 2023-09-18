@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from typing import Optional
-from body_request import Blog
+from blog222.body_request import Blog
 
 
 app = FastAPI()
