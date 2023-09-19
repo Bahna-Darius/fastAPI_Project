@@ -2,6 +2,8 @@ from fastapi import FastAPI, Depends, status, Response, HTTPException
 import schemas, models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
+from typing import List
+from passlib.context import CryptContext
 
 
 app = FastAPI()
@@ -59,13 +61,13 @@ def update_blog_id(request: schemas.Blog, id, db: Session = Depends(get_db)):
     return {"data": "updated success"}
 
 
-@app.get("/blog")
+@app.get("/blog", response_model=List[schemas.ShowBlog])
 def all_blogs_return(db: Session = Depends(get_db)):
     blogs = db.query(models.Blog).all()
     return blogs
 
 
-@app.get("/blog/{id}", status_code=status.HTTP_200_OK)
+@app.get("/blog/{id}", status_code=status.HTTP_200_OK, response_model=schemas.ShowBlog)  #defined the response, now it will only return the title, body from the basemodel
 def show(id, response: Response, db: Session = Depends(get_db)):
     blog = db.query(models.Blog).filter(models.Blog.id == id).first()
 
@@ -78,5 +80,22 @@ def show(id, response: Response, db: Session = Depends(get_db)):
                             detail=f"Blog with the id {id} is not available")
 
     return blog
+
+
+pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto") #password encryption
+
+
+@app.post("/user")
+def create_user(request: schemas.User, db: Session = Depends(get_db)):
+    hashedPassword = pwd_cxt.hash(request.password)
+    new_user = models.Users(name=request.name, email=request.email, password=hashedPassword)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+
 
 
