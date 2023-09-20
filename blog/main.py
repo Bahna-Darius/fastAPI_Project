@@ -1,35 +1,30 @@
-from fastapi import FastAPI, Depends, status, Response, HTTPException
-import schemas, models
-from database import engine, SessionLocal
-from sqlalchemy.orm import Session
 from typing import List
+from fastapi import FastAPI, Depends, status, HTTPException , Response
+import models, schemas, database
+from database import engine, get_db
+from sqlalchemy.orm import Session
+from hashing import Hash
 from passlib.context import CryptContext
 
 
 app = FastAPI()
 
+
 models.Base.metadata.create_all(engine)
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close_all()
-
-
 #create new blog in db
-@app.post("/blogv2", status_code=status.HTTP_201_CREATED) #status_code add
-def create(request: schemas.Blog, db: Session = Depends(get_db)):
-    new_blog = models.Blog(title=request.title, body=request.body)
+@app.post("/blogv2", status_code=status.HTTP_201_CREATED, tags=["Blogs"]) #status_code add
+def create_blog(request: schemas.Blog, db: Session = Depends(get_db)):
+    new_blog = models.Blog(title=request.title, body=request.body, user_id=1)
     db.add(new_blog)
-    db.commit()   #save modification
+    db.commit()         #save modification
     db.refresh(new_blog)
+
     return new_blog
 
 
-@app.delete("/blog/{id}")
+@app.delete("/blog/{id}", tags=["Blogs"])
 def delete_blog(id, db: Session = Depends(get_db)):
     blog = db.query(models.Blog).filter(models.Blog.id == id)
 
@@ -43,10 +38,10 @@ def delete_blog(id, db: Session = Depends(get_db)):
     return {"data": "delete blog success"}
 
 
-@app.put("/blog/{id}", status_code=status.HTTP_202_ACCEPTED)
+@app.put("/blog/{id}", status_code=status.HTTP_202_ACCEPTED, tags=["Blogs"])
 def update_blog_id(request: schemas.Blog, id, db: Session = Depends(get_db)):
     blog = db.query(models.Blog).filter(models.Blog.id == id)
-    if not blog.first():  #check the id is valid
+    if not blog.first():            #check the id is valid
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Blog with id {id} not fond!")
     else:
@@ -61,14 +56,14 @@ def update_blog_id(request: schemas.Blog, id, db: Session = Depends(get_db)):
     return {"data": "updated success"}
 
 
-@app.get("/blog", response_model=List[schemas.ShowBlog])
+@app.get("/blog", response_model=List[schemas.ShowBlog], tags=["Blogs"])
 def all_blogs_return(db: Session = Depends(get_db)):
     blogs = db.query(models.Blog).all()
     return blogs
 
 
-@app.get("/blog/{id}", status_code=status.HTTP_200_OK, response_model=schemas.ShowBlog)  #defined the response, now it will only return the title, body from the basemodel
-def show(id, response: Response, db: Session = Depends(get_db)):
+@app.get("/blog/{id}", status_code=status.HTTP_200_OK, response_model=schemas.ShowBlog, tags=["Blogs"])  #defined the response, now it will only return the title, body from the basemodel
+def show_blog_id(id, response: Response, db: Session = Depends(get_db)):
     blog = db.query(models.Blog).filter(models.Blog.id == id).first()
 
     # if not blog:
@@ -81,14 +76,17 @@ def show(id, response: Response, db: Session = Depends(get_db)):
 
     return blog
 
+#Create User:
 
-pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto") #password encryption
+# pwd_cxt = CryptContext(schemes=["bcrypt"], deprecated="auto") #password encryption
 
 
-@app.post("/user")
+@app.post("/user", response_model=schemas.ShowUser, tags=["Users"])
 def create_user(request: schemas.User, db: Session = Depends(get_db)):
-    hashedPassword = pwd_cxt.hash(request.password)
-    new_user = models.Users(name=request.name, email=request.email, password=hashedPassword)
+    # hashedPassword = pwd_cxt.hash(request.password)
+
+    new_user = models.Users(name=request.name, email=request.email,
+                            password=Hash.bcrypt(request.password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -96,6 +94,12 @@ def create_user(request: schemas.User, db: Session = Depends(get_db)):
     return new_user
 
 
+@app.get("/user/{id}", response_model=schemas.ShowUser, tags=["Users"])
+def get_user_id(id: int, db: Session = Depends(get_db)):
+    user = db.query(models.Users).filter(models.Users.id == id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with the id {id} is not available")
 
-
+    return user
 
