@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, status, HTTPException, Response
 import models, schemas, database, authentication
 from database import engine, get_db
 from sqlalchemy.orm import Session
+from sqlalchemy import inspect
 from hashing import hash_password
 from passlib.context import CryptContext
 from oauth2 import get_current_user
@@ -113,4 +114,27 @@ def get_user_id(id: int, db: Session = Depends(get_db)):
                             detail=f"User with the id {id} is not available")
 
     return user
+
+
+@app.get("/user", tags=["Users"])
+def show_users_all(db: Session = Depends(get_db)):
+    users = db.query(models.Users).all()
+
+    return users
+
+
+@app.delete("/user/{id}", tags=["Users"])
+def delete_user(id, db: Session = Depends(get_db),
+            get_current_user: schemas.User = Depends(get_current_user)):
+
+    user = db.query(models.Users).filter(models.Users.id == id)
+
+    if not user.first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"User with id {id} not found!")
+    else:
+        user.delete(synchronize_session=False)
+        db.commit()
+
+    return {"data": "delete User success"}
 
