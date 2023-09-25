@@ -4,4 +4,4 @@
 
     If you want to access these APIs, you can do it by creating a user or by already using one in the database: 
     username: test
-    password: test
+    password: test123
