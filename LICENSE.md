@@ -1,4 +1,4 @@
-# Taste enjoy eat - Personal License
+# Blog API - Personal License
 
 Copyright (c) [2023] [Bahna-Darius]
 
