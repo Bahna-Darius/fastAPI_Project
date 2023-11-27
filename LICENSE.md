@@ -1,4 +1,4 @@
-# Taste Enjoy Eat - Personal License
+# FastAPI Project - Personal License
 
 **Copyright (c) [2023] [Bahna-Darius]**
 
